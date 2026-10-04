@@ -1,0 +1,17 @@
+# Backend
+backend/target/
+backend/data/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Entorno y editores
+.env
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Contenido real de las partidas (fichas, secretos): nunca al repositorio
+contenido-privado/
