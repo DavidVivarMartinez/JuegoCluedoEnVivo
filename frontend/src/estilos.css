@@ -359,8 +359,48 @@ code { background: var(--campo); border: 1px solid var(--borde); border-radius: 
 
 /* ---------- Pantalla de acceso ---------- */
 
-.acceso { max-width: 360px; margin: 0 auto; padding: calc(18vh + env(safe-area-inset-top)) 1.25rem 2rem; text-align: center; }
-.acceso h1 { font-size: 1.9rem; color: var(--acento); margin-bottom: .5rem; }
+.escena {
+  position: relative; min-height: 100%; overflow: hidden; isolation: isolate;
+  background: radial-gradient(ellipse at 50% 55%, #2a221d 0%, #17120f 55%, #0b0907 100%);
+}
+.escena-fondo { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+/* Viñeta y grano de foto policial antigua */
+.escena-fondo::before, .escena-fondo::after { content: ''; position: absolute; inset: 0; }
+.escena-fondo::before { background: radial-gradient(ellipse at center, transparent 45%, rgb(0 0 0 / .65) 100%); z-index: 2; }
+.escena-fondo::after {
+  z-index: 3; opacity: .13; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+.silueta {
+  position: absolute; left: 50%; top: 73%; width: min(46vw, 230px); height: auto;
+  transform: translate(-50%, -50%) rotate(-74deg);
+  fill: none; stroke: rgb(236 227 214 / .42); stroke-width: 2.6; stroke-linejoin: round; stroke-linecap: round;
+}
+.marcador {
+  position: absolute; z-index: 1; width: 30px; height: 26px; display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 2px; background: #d9b72b; color: #1a1408; font-weight: 800; font-size: .85rem;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%); box-shadow: 0 4px 10px rgb(0 0 0 / .5);
+}
+.marcador.uno { left: 9%; top: 63%; }
+.marcador.dos { right: 9%; top: 77%; }
+.marcador.tres { left: 40%; top: 86%; }
+.cinta {
+  position: absolute; left: -40%; width: 180%; z-index: 1; overflow: hidden; white-space: nowrap;
+  padding: .35rem 0; background: #d9b72b; color: #15110a;
+  font: 800 .78rem/1 system-ui, sans-serif; letter-spacing: .18em;
+  border-top: 2px solid rgb(0 0 0 / .35); border-bottom: 2px solid rgb(0 0 0 / .35);
+  box-shadow: 0 6px 18px rgb(0 0 0 / .55);
+}
+.cinta.arriba { top: calc(7vh + env(safe-area-inset-top)); transform: rotate(-9deg); }
+.cinta.abajo { bottom: 6vh; transform: rotate(6deg); opacity: .92; }
+
+.acceso { max-width: 380px; margin: 0 auto; padding: calc(20vh + env(safe-area-inset-top)) 1.25rem 2rem; text-align: center; }
+.acceso-tarjeta {
+  padding: 1.6rem 1.25rem 1.4rem; border-radius: 16px; border: 1px solid rgb(201 164 92 / .35);
+  background: rgb(20 17 15 / .78); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  box-shadow: 0 20px 50px rgb(0 0 0 / .55);
+}
+.acceso h1 { font-size: 1.9rem; color: var(--acento); margin-bottom: .5rem; text-shadow: 0 2px 8px rgb(0 0 0 / .6); }
 .acceso form { margin-top: 1.5rem; }
 .acceso .codigo { text-align: center; text-transform: uppercase; letter-spacing: .25em; font-size: 1.25rem; }
 .acceso button { width: 100%; }
