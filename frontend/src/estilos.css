@@ -394,6 +394,51 @@ code { background: var(--campo); border: 1px solid var(--borde); border-radius: 
 .cinta.arriba { top: calc(7vh + env(safe-area-inset-top)); transform: rotate(-9deg); }
 .cinta.abajo { bottom: 6vh; transform: rotate(6deg); opacity: .92; }
 
+/* ----- Movimiento de la escena ----- */
+.cinta span { display: inline-block; animation: cinta 60s linear infinite; }
+.cinta.abajo span { animation-direction: reverse; animation-duration: 75s; }
+@keyframes cinta { to { transform: translateX(-50%); } }
+
+.silueta circle, .silueta path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: tiza 2.6s .3s ease-out forwards; }
+.silueta path { animation-delay: .9s; animation-duration: 3.2s; }
+@keyframes tiza { to { stroke-dashoffset: 0; } }
+
+.marcador { animation: caer .55s cubic-bezier(.3, 1.4, .6, 1) backwards; }
+.marcador.uno { animation-delay: 3.4s; }
+.marcador.dos { animation-delay: 3.7s; }
+.marcador.tres { animation-delay: 4s; }
+@keyframes caer { from { opacity: 0; transform: translateY(-40px) scale(.6); } }
+
+/* Haz de linterna que recorre la escena despacio */
+.linterna {
+  position: absolute; z-index: 1; left: 50%; top: 50%; width: 120vmax; height: 120vmax; margin: -60vmax 0 0 -60vmax;
+  background: radial-gradient(circle, rgb(255 236 190 / .13) 0, rgb(255 236 190 / .05) 9%, transparent 20%);
+  mix-blend-mode: screen; animation: linterna 16s ease-in-out infinite alternate;
+}
+@keyframes linterna {
+  0% { transform: translate(-28vw, 22vh); }
+  30% { transform: translate(22vw, 30vh); }
+  60% { transform: translate(-10vw, 8vh); }
+  100% { transform: translate(26vw, -6vh); }
+}
+
+/* Luces de sirena reflejadas en las esquinas */
+.sirena {
+  position: absolute; z-index: 1; top: -25vmax; width: 60vmax; height: 60vmax; border-radius: 50%;
+  filter: blur(40px); opacity: 0; animation: sirena 1.8s ease-in-out infinite;
+}
+.sirena.roja { left: -30vmax; background: rgb(200 40 40 / .55); }
+.sirena.azul { right: -30vmax; background: rgb(40 80 210 / .55); animation-delay: .9s; }
+@keyframes sirena { 0%, 100% { opacity: 0; } 25% { opacity: .5; } 50% { opacity: .08; } }
+
+.acceso-tarjeta { animation: aparecer .8s .15s ease-out backwards; }
+@keyframes aparecer { from { opacity: 0; transform: translateY(18px) scale(.98); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cinta span, .linterna, .sirena, .marcador, .acceso-tarjeta { animation: none; }
+  .silueta circle, .silueta path { animation: none; stroke-dashoffset: 0; }
+}
+
 .acceso { max-width: 380px; margin: 0 auto; padding: calc(20vh + env(safe-area-inset-top)) 1.25rem 2rem; text-align: center; }
 .acceso-tarjeta {
   padding: 1.6rem 1.25rem 1.4rem; border-radius: 16px; border: 1px solid rgb(201 164 92 / .35);

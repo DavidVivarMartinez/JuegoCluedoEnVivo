@@ -18,7 +18,6 @@ export default function Acceso({ alEntrar, error }) {
       <main className="acceso">
         <div className="acceso-tarjeta">
           <h1>Misterio en Vivo</h1>
-          <p className="tenue">Introduce el código que te ha dado el Máster.</p>
           <form onSubmit={enviar}>
             <input
               className="codigo"
@@ -43,12 +42,19 @@ export default function Acceso({ alEntrar, error }) {
   )
 }
 
-const CINTA = 'ESCENA DEL CRIMEN · NO PASAR · '.repeat(8)
+// Dos mitades idénticas: al desplazarse media cinta, el bucle no se nota.
+const CINTA = 'ESCENA DEL CRIMEN · NO PASAR · '.repeat(16)
 
-/** Fondo decorativo: silueta de tiza en el suelo, cintas policiales y marcadores de pruebas. */
+/**
+ * Fondo decorativo: silueta de tiza que se dibuja sola, cintas policiales en movimiento,
+ * marcadores de pruebas, una linterna que barre la escena y destellos de sirena.
+ */
 function EscenaDelCrimen() {
   return (
     <div className="escena-fondo" aria-hidden="true">
+      <span className="sirena roja" />
+      <span className="sirena azul" />
+      <span className="linterna" />
       <svg className="silueta" viewBox="0 0 200 300">
         <defs>
           {/* Borde irregular, como de tiza sobre baldosa */}
@@ -58,15 +64,19 @@ function EscenaDelCrimen() {
           </filter>
         </defs>
         <g filter="url(#tiza)">
-          <circle cx="100" cy="38" r="19" />
-          <path d="M92 60 L70 68 L40 56 L22 32 L12 40 L32 72 L62 90 L66 140 L60 152 L40 232 L30 272 L16 284 L44 288 L58 242 L88 172 L100 164 L112 172 L140 240 L160 280 L186 278 L168 262 L150 226 L138 152 L134 140 L136 92 L158 104 L176 146 L186 140 L168 96 L130 68 L108 60 Z" />
+          <circle cx="100" cy="38" r="19" pathLength="1" />
+          <path pathLength="1" d="M92 60 L70 68 L40 56 L22 32 L12 40 L32 72 L62 90 L66 140 L60 152 L40 232 L30 272 L16 284 L44 288 L58 242 L88 172 L100 164 L112 172 L140 240 L160 280 L186 278 L168 262 L150 226 L138 152 L134 140 L136 92 L158 104 L176 146 L186 140 L168 96 L130 68 L108 60 Z" />
         </g>
       </svg>
       <span className="marcador uno">1</span>
       <span className="marcador dos">2</span>
       <span className="marcador tres">3</span>
-      <div className="cinta arriba">{CINTA}</div>
-      <div className="cinta abajo">{CINTA}</div>
+      <div className="cinta arriba">
+        <span>{CINTA}</span>
+      </div>
+      <div className="cinta abajo">
+        <span>{CINTA}</span>
+      </div>
     </div>
   )
 }
