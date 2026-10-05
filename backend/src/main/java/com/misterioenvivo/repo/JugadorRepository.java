@@ -15,9 +15,16 @@ public interface JugadorRepository extends JpaRepository<Jugador, Long> {
 
     boolean existsByCodigoAcceso(String codigoAcceso);
 
+    /** Todos los participantes de la partida, Máster incluido (también es un personaje). */
     List<Jugador> findByPartidaIdOrderByNombreAsc(Long partidaId);
 
     List<Jugador> findByPartidaIdAndRolOrderByNombreAsc(Long partidaId, Rol rol);
+
+    List<Jugador> findByPartidaIdAndAsesinoTrueOrderByNombreAsc(Long partidaId);
+
+    List<Jugador> findByArmaDeId(Long jugadorId);
+
+    List<Jugador> findByFinalSospechosoIdOrFinalArmaDeId(Long sospechosoId, Long armaDeId);
 
     Optional<Jugador> findByIdAndPartidaId(Long id, Long partidaId);
 }

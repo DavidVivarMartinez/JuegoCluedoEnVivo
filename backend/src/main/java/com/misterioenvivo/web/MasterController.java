@@ -2,6 +2,7 @@ package com.misterioenvivo.web;
 
 import com.misterioenvivo.seguridad.Sesion;
 import com.misterioenvivo.servicio.JuegoService;
+import com.misterioenvivo.servicio.MecanicasService;
 import com.misterioenvivo.web.Dtos.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +15,11 @@ import java.util.Map;
 public class MasterController {
 
     private final JuegoService juego;
+    private final MecanicasService mecanicas;
 
-    public MasterController(JuegoService juego) {
+    public MasterController(JuegoService juego, MecanicasService mecanicas) {
         this.juego = juego;
+        this.mecanicas = mecanicas;
     }
 
     @GetMapping("/estado")
@@ -34,6 +37,33 @@ public class MasterController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void asesino(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestBody CambioAsesino datos) {
         juego.cambiarAsesino(s.partidaId(), datos.jugadorId());
+    }
+
+    /** Marca o desmarca a un jugador como asesino (puede haber varios). */
+    @PutMapping("/jugadores/{id}/asesino")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void marcarAsesino(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                              @RequestBody MarcaAsesino datos) {
+        juego.marcarAsesino(s.partidaId(), id, Boolean.TRUE.equals(datos.asesino()));
+    }
+
+    /** Crea o actualiza la pista "El arma" con las armas elegidas por los asesinos (queda bloqueada). */
+    @PostMapping("/arma/pista")
+    public Map<String, Long> pistaArma(@RequestAttribute(Sesion.ATRIBUTO) Sesion s) {
+        return Map.of("id", juego.generarPistaArma(s.partidaId()));
+    }
+
+    /** Da (positivo) o quita (negativo) dinero; sin jugadorIds, a todos los jugadores. */
+    @PostMapping("/dinero")
+    public Map<String, Integer> dinero(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestBody AjusteDinero datos) {
+        return Map.of("jugadores", juego.ajustarDinero(s.partidaId(), datos));
+    }
+
+    /** Ficha pública del propio Máster: también aparece como personaje en el carrusel de los jugadores. */
+    @PutMapping("/ficha")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void ficha(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestBody FichaEntrada ficha) {
+        juego.editarFichaMaster(s.partidaId(), s.jugadorId(), ficha);
     }
 
     // ---------- Jugadores ----------
@@ -101,6 +131,14 @@ public class MasterController {
         juego.borrarObjetivo(s.partidaId(), id);
     }
 
+    /** Pista que se desbloquea al jugador cuando el objetivo se da por cumplido (pistaId null = ninguna). */
+    @PutMapping("/objetivos/{id}/recompensa")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void recompensaObjetivo(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                                   @RequestBody RecompensaEntrada datos) {
+        juego.recompensaObjetivo(s.partidaId(), id, datos.pistaId());
+    }
+
     // ---------- Pistas ----------
 
     @PostMapping("/pistas")
@@ -123,6 +161,14 @@ public class MasterController {
         juego.visibilidadPista(s.partidaId(), id, datos);
     }
 
+    /** Precio en la tienda (null = no está a la venta). */
+    @PutMapping("/pistas/{id}/precio")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void precioPista(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                            @RequestBody PrecioPista datos) {
+        juego.precioPista(s.partidaId(), id, datos.precio());
+    }
+
     @DeleteMapping("/pistas/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void borrarPista(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id) {
@@ -135,6 +181,103 @@ public class MasterController {
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Integer> enviarMensaje(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestBody MensajeEntrada datos) {
         return Map.of("enviados", juego.enviarMensaje(s.partidaId(), datos));
+    }
+
+    // ---------- Reglas, tablón, habilidades, pistas falsas, QR y envíos ----------
+
+    /** Estancias de la casa (una por línea) y precio de una pista falsa. */
+    @PutMapping("/reglas")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void reglas(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestBody ReglasEntrada datos) {
+        mecanicas.reglas(s.partidaId(), datos);
+    }
+
+    /** Aviso del Máster en el tablón público. */
+    @PostMapping("/tablon")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Long> aviso(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestBody TextoEntrada datos) {
+        return Map.of("id", mecanicas.aviso(s.partidaId(), s.jugadorId(), datos.texto()));
+    }
+
+    @DeleteMapping("/tablon/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void borrarPublicacion(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id) {
+        mecanicas.borrarPublicacion(s.partidaId(), id);
+    }
+
+    @PostMapping("/jugadores/{id}/habilidades")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Long> crearHabilidad(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                                            @RequestBody HabilidadEntrada datos) {
+        return Map.of("id", mecanicas.crearHabilidad(s.partidaId(), id, datos));
+    }
+
+    @PutMapping("/habilidades/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void editarHabilidad(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                                @RequestBody HabilidadEntrada datos) {
+        mecanicas.editarHabilidad(s.partidaId(), id, datos);
+    }
+
+    /** Contesta una habilidad pendiente o la repone (estado DISPONIBLE). */
+    @PostMapping("/habilidades/{id}/resolver")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resolverHabilidad(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                                  @RequestBody ResolverHabilidad datos) {
+        mecanicas.resolverHabilidad(s.partidaId(), id, datos);
+    }
+
+    @DeleteMapping("/habilidades/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void borrarHabilidad(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id) {
+        mecanicas.borrarHabilidad(s.partidaId(), id);
+    }
+
+    @PostMapping("/pistas/{id}/falsa/aprobar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void aprobarFalsa(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                             @RequestBody AprobarFalsa datos) {
+        mecanicas.aprobarFalsa(s.partidaId(), id, datos);
+    }
+
+    @PostMapping("/pistas/{id}/falsa/rechazar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void rechazarFalsa(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id) {
+        mecanicas.rechazarFalsa(s.partidaId(), id);
+    }
+
+    /** Activa o quita el QR de una pista; devuelve el código. */
+    @PutMapping("/pistas/{id}/qr")
+    public Map<String, String> qr(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                                  @RequestBody QrEntrada datos) {
+        String codigo = mecanicas.qr(s.partidaId(), id, Boolean.TRUE.equals(datos.activo()));
+        return codigo == null ? Map.of() : Map.of("codigo", codigo);
+    }
+
+    @PostMapping("/envios")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Long> crearEnvio(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestBody EnvioEntrada datos) {
+        return Map.of("id", mecanicas.crearEnvio(s.partidaId(), datos));
+    }
+
+    @PutMapping("/envios/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void editarEnvio(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                            @RequestBody EnvioEntrada datos) {
+        mecanicas.editarEnvio(s.partidaId(), id, datos);
+    }
+
+    @DeleteMapping("/envios/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void borrarEnvio(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id) {
+        mecanicas.borrarEnvio(s.partidaId(), id);
+    }
+
+    /** Entrega ya (a sus destinatarios, o una copia a los jugadores indicados). */
+    @PostMapping("/envios/{id}/enviar")
+    public Map<String, Integer> enviarAhora(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                                            @RequestBody(required = false) EnviarAhora datos) {
+        return Map.of("jugadores", mecanicas.enviarAhora(s.partidaId(), id, datos));
     }
 
     // ---------- Variables narrativas ----------

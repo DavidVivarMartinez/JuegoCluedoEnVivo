@@ -18,17 +18,21 @@ public class Partida {
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
 
+    // Sin tipo ENUM nativo ni CHECK: así se pueden añadir fases sin tocar las bases ya creadas.
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, columnDefinition = "varchar(30) not null")
     private Fase fase = Fase.PREPARACION;
-
-    /** Asesino activo de la partida. Se decide durante el juego, nunca en código. */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "asesino_id")
-    private Jugador asesino;
 
     @Column(nullable = false)
     private Instant creadaEn = Instant.now();
+
+    /** Estancias de la casa para el cuaderno de deducción, una por línea. */
+    @Column(length = 4000)
+    private String lugares;
+
+    /** Lo que paga un asesino por colar una pista falsa. */
+    @Column(nullable = false, columnDefinition = "integer not null default 200")
+    private int precioPistaFalsa = 200;
 
     public Long getId() { return id; }
     public String getNombre() { return nombre; }
@@ -41,7 +45,9 @@ public class Partida {
     public void setFechaFin(LocalDate fechaFin) { this.fechaFin = fechaFin; }
     public Fase getFase() { return fase; }
     public void setFase(Fase fase) { this.fase = fase; }
-    public Jugador getAsesino() { return asesino; }
-    public void setAsesino(Jugador asesino) { this.asesino = asesino; }
     public Instant getCreadaEn() { return creadaEn; }
+    public String getLugares() { return lugares; }
+    public void setLugares(String lugares) { this.lugares = lugares; }
+    public int getPrecioPistaFalsa() { return precioPistaFalsa; }
+    public void setPrecioPistaFalsa(int precioPistaFalsa) { this.precioPistaFalsa = precioPistaFalsa; }
 }

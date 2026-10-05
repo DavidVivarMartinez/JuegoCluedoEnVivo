@@ -34,6 +34,12 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- Postgres: bases gratuitas en la nube (Neon, Supabase). Se elige por la URL. -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
         <!-- H2: tests y perfil "local" (arrancar sin MySQL) -->
         <dependency>
             <groupId>com.h2database</groupId>

@@ -1,6 +1,8 @@
 # Backend
 backend/target/
 backend/data/
+# Frontend compilado que el Dockerfile copia dentro del jar
+backend/src/main/resources/static/
 
 # Frontend
 frontend/node_modules/

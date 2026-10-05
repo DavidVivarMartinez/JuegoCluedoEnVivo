@@ -21,12 +21,17 @@ public class GeneradorCodigos {
     public String nuevo() {
         String codigo;
         do {
-            StringBuilder sb = new StringBuilder(LONGITUD);
-            for (int i = 0; i < LONGITUD; i++) {
-                sb.append(ALFABETO.charAt(azar.nextInt(ALFABETO.length())));
-            }
-            codigo = sb.toString();
+            codigo = aleatorio(LONGITUD);
         } while (jugadores.existsByCodigoAcceso(codigo));
         return codigo;
+    }
+
+    /** Código con el mismo alfabeto sin comprobar unicidad (la comprueba quien lo usa). */
+    public String aleatorio(int longitud) {
+        StringBuilder sb = new StringBuilder(longitud);
+        for (int i = 0; i < longitud; i++) {
+            sb.append(ALFABETO.charAt(azar.nextInt(ALFABETO.length())));
+        }
+        return sb.toString();
     }
 }

@@ -1,0 +1,21 @@
+# Plano para Render (https://render.com): "New +" -> "Blueprint" -> este repositorio.
+# Crea un servicio web gratuito a partir del Dockerfile. La base de datos va aparte
+# (por ejemplo Postgres gratuito de Neon): Render pide DB_URL, DB_USER y DB_PASSWORD al crearlo.
+services:
+  - type: web
+    name: misterio-en-vivo
+    runtime: docker
+    plan: free
+    region: ohio  # misma región que la base de Neon (us-east-2)
+    healthCheckPath: /
+    envVars:
+      - key: ADMIN_KEY
+        generateValue: true
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_POOL
+        value: "4"

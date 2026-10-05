@@ -10,5 +10,7 @@ public interface ObjetivoRepository extends JpaRepository<Objetivo, Long> {
 
     List<Objetivo> findByJugadorPartidaIdOrderByIdAsc(Long partidaId);
 
+    List<Objetivo> findByRecompensaId(Long pistaId);
+
     void deleteByJugadorId(Long jugadorId);
 }

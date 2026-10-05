@@ -13,6 +13,14 @@ public interface PistaRepository extends JpaRepository<Pista, Long> {
 
     Optional<Pista> findByIdAndPartidaId(Long id, Long partidaId);
 
+    Optional<Pista> findByCodigoQrAndPartidaId(String codigoQr, Long partidaId);
+
+    boolean existsByCodigoQr(String codigoQr);
+
+    List<Pista> findByAutorFalsaIdOrderByIdAsc(Long jugadorId);
+
+    List<Pista> findByFalsaParaId(Long jugadorId);
+
     @Query("select p from Pista p join p.descubiertaPor j where j.id = :jugadorId order by p.id")
     List<Pista> visiblesPara(@Param("jugadorId") Long jugadorId);
 }

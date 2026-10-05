@@ -1,0 +1,12 @@
+# Nada de esto hace falta para construir la imagen
+**/node_modules
+**/dist
+**/target
+backend/data
+backend/src/main/resources/static
+contenido-privado
+.env
+.git
+.github
+.vscode
+*.md

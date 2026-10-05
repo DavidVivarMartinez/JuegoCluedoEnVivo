@@ -1,7 +1,37 @@
-# MySQL para desarrollo:  docker compose up -d
+# Backend + app en segundo plano, sin ventanas de consola:
+#   docker compose up -d --build     arranca (o actualiza) el backend, que sirve también la app
+#   docker compose logs -f app       ver el registro
+#   docker compose down              pararlo (los datos se conservan en el volumen misterio-datos)
+#
+# Por defecto guarda los datos en H2 dentro del volumen. Para usar una base externa
+# (Prisma Postgres, Neon...), copia .env.example a .env y rellena DB_URL, DB_USER y DB_PASSWORD.
+# Todo lleva el prefijo "misterio" (proyecto, contenedores, volúmenes) para no cruzarse
+# nunca con los contenedores de otros proyectos de la misma máquina.
+name: misterio-en-vivo
+
 services:
+  app:
+    build: .
+    image: misterio-en-vivo
+    container_name: misterio-app
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # "local" = H2 en el volumen; "nube" = base externa definida en .env
+      SPRING_PROFILES_ACTIVE: ${PERFIL:-local}
+    volumes:
+      - misterio-datos:/app/data
+
+  # MySQL opcional para desarrollo:  docker compose --profile mysql up -d
+  # Escucha en localhost:3307 (Kentia usa el 3306).
   mysql:
+    profiles: ["mysql"]
     image: mysql:8.4
+    container_name: misterio-mysql
     environment:
       MYSQL_DATABASE: misterio
       MYSQL_USER: misterio
@@ -9,9 +39,12 @@ services:
       MYSQL_ROOT_PASSWORD: root
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
-      - mysql-datos:/var/lib/mysql
+      - misterio-mysql-datos:/var/lib/mysql
 
 volumes:
-  mysql-datos:
+  misterio-datos:
+    name: misterio-datos
+  misterio-mysql-datos:
+    name: misterio-mysql-datos
