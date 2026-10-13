@@ -42,13 +42,19 @@ if ($Enlaces) {
   $salida = Join-Path (Split-Path (Resolve-Path $Csv)) 'correos.html'
   $html = New-Object System.Text.StringBuilder
   [void]$html.Append('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Correos de acceso</title>')
-  [void]$html.Append('<style>body{font-family:system-ui;max-width:40rem;margin:2rem auto;padding:0 1rem}a.b{display:block;padding:.8rem 1rem;margin:.5rem 0;background:#1f2937;color:#fff;border-radius:.5rem;text-decoration:none}small{color:#666}</style></head><body>')
+  [void]$html.Append('<style>body{font-family:system-ui;max-width:40rem;margin:2rem auto;padding:0 1rem}a.b{display:block;padding:.8rem 1rem;margin:.5rem 0;background:#1f2937;color:#fff;border-radius:.5rem;text-decoration:none}a.w{background:#128c7e;margin-top:-.3rem}small{color:#ddd}</style></head><body>')
   [void]$html.Append('<h1>Correos de acceso</h1><p>Cada botón abre tu correo con el mensaje ya escrito; solo tienes que darle a enviar.</p>')
   foreach ($f in $filas) {
     $cuerpo = Cuerpo $f
     $mailto = 'mailto:' + [uri]::EscapeDataString($f.Email) + '?subject=' + [uri]::EscapeDataString($Asunto) + '&body=' + [uri]::EscapeDataString($cuerpo)
     $aviso = if ($f.Email) { '' } else { ' <small>(sin correo en el CSV)</small>' }
-    [void]$html.Append("<a class=`"b`" href=`"$mailto`">Enviar a $($f.Nombre)$aviso</a>")
+    [void]$html.Append("<a class=`"b`" href=`"$mailto`">Correo a $($f.Nombre)$aviso</a>")
+    # Con teléfono (columna opcional Telefono, con prefijo de país y sin espacios): el mismo mensaje por WhatsApp.
+    $telefono = if ($f.PSObject.Properties['Telefono']) { ($f.Telefono -replace '[^0-9]', '') } else { '' }
+    if ($telefono) {
+      $wa = 'https://wa.me/' + $telefono + '?text=' + [uri]::EscapeDataString($cuerpo)
+      [void]$html.Append("<a class=`"b w`" href=`"$wa`" target=`"_blank`">WhatsApp a $($f.Nombre)</a>")
+    }
   }
   [void]$html.Append('</body></html>')
   [IO.File]::WriteAllText($salida, $html.ToString(), $utf8)
