@@ -342,6 +342,9 @@ class FlujoPartidaTest {
         assertThat(leer(get("/api/yo"), codigoLuis).get("dinero").asInt()).isEqualTo(95);
         assertThat(leer(get("/api/yo"), codigoEva).toString()).doesNotContain("Por callar");
 
+        // La tienda solo abre desde la investigación
+        enviar(put("/api/master/fase"), master, "{\"fase\":\"INVESTIGACION\"}");
+
         // Tienda: se ve el título y el precio, no el contenido, hasta comprarla
         long pista = crear(post("/api/master/pistas"), master, "{\"titulo\":\"Recibo\",\"contenido\":\"Un recibo de las 23:50\"}");
         enviar(put("/api/master/pistas/" + pista + "/precio"), master, "{\"precio\":60}");
@@ -367,6 +370,9 @@ class FlujoPartidaTest {
         assertThat(objetivo(leer(get("/api/yo"), codigoEva), objetivo).get("recompensaDinero").asInt()).isEqualTo(40);
         enviar(put("/api/master/objetivos/" + objetivo), master, "{\"estado\":\"CUMPLIDO\"}");
         assertThat(leer(get("/api/yo"), codigoEva).get("dinero").asInt()).isEqualTo(80); // 100 - 60 + 40
+
+        // El arma se elige antes de la investigación: volvemos a la convivencia
+        enviar(put("/api/master/fase"), master, "{\"fase\":\"CONVIVENCIA\"}");
 
         // Dos asesinos: se ven como cómplices; un jugador normal no sabe nada
         enviar(put("/api/master/jugadores/" + ana + "/asesino"), master, "{\"asesino\":true}");

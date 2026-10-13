@@ -58,6 +58,9 @@ class MecanicasTest {
         // Acusación final: el Máster la ve en el ranking; el grupo, solo al final
         sinContenido(put("/api/master/jugadores/" + luis + "/asesino"), master, "{\"asesino\":true}");
         sinContenido(put("/api/yo/arma"), codLuis, "{\"jugadorId\":" + ana + "}");
+        // La acusación final solo se admite desde la investigación
+        hacer(put("/api/yo/acusacion-final"), codAna, "{\"sospechosoId\":" + luis + "}", status().isConflict());
+        sinContenido(put("/api/master/fase"), master, "{\"fase\":\"INVESTIGACION\"}");
         hacer(put("/api/yo/acusacion-final"), codAna,
                 "{\"sospechosoId\":" + luis + ",\"armaDeId\":" + ana + ",\"razon\":\"El barro\"}", status().isOk());
         assertThat(leer(get("/api/yo"), codLuis).get("acusacionesFinales")).isEmpty();
