@@ -134,6 +134,9 @@ public class MecanicasService {
         if (partida.getFase() == Fase.FINALIZADA) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "La partida ha terminado: ya no se puede cambiar");
         }
+        if (partida.getFase() == Fase.PREPARACION || partida.getFase() == Fase.CONVIVENCIA) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Todavía no hay nada que acusar: espera a la investigación");
+        }
         Jugador sospechoso = datos.sospechosoId() == null ? null : juego.jugador(partida.getId(), datos.sospechosoId());
         Jugador arma = datos.armaDeId() == null ? null : juego.jugador(partida.getId(), datos.armaDeId());
         if (arma != null && arma.getHerramienta() == null) {

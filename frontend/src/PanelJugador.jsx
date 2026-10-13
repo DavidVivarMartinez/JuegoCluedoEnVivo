@@ -827,7 +827,11 @@ function Dinero({ datos, otros, accion, recargar }) {
 
       <h2>Tienda del Máster</h2>
       {tienda.length === 0 ? (
-        <Vacio>Ahora mismo no hay pistas a la venta.</Vacio>
+        <Vacio>
+          {datos.partida.fase === 'PREPARACION' || datos.partida.fase === 'CONVIVENCIA'
+            ? 'La tienda abre cuando empiece la investigación.'
+            : 'Ahora mismo no hay pistas a la venta.'}
+        </Vacio>
       ) : (
         <details className="historial tienda" open={tienda.length <= 6}>
           <summary>

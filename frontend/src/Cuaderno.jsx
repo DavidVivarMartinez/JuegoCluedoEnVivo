@@ -34,7 +34,14 @@ export default function Cuaderno({ datos, otros, alAbrir, alGuardarNota, recarga
     <section>
       <Tablero datos={datos} sospechosos={sospechosos} armas={armas} recargar={recargar} />
       <Notas otros={otros} marcas={datos.deduccion ?? []} alAbrir={alAbrir} alGuardar={alGuardarNota} />
-      <AcusacionFinal datos={datos} sospechosos={sospechosos} armas={armas} recargar={recargar} />
+      {datos.partida.fase === 'PREPARACION' || datos.partida.fase === 'CONVIVENCIA' ? (
+        <>
+          <h2>Acusación final</h2>
+          <p className="vacio">Se entrega el domingo, cuando el Máster abra la resolución. Hasta entonces, apunta y pregunta.</p>
+        </>
+      ) : (
+        <AcusacionFinal datos={datos} sospechosos={sospechosos} armas={armas} recargar={recargar} />
+      )}
     </section>
   )
 }

@@ -163,8 +163,9 @@ public class JuegoService {
 
         List<Pista> visibles = pistas.visiblesPara(jugadorId);
         java.util.Set<Long> yaTengo = visibles.stream().map(Pista::getId).collect(Collectors.toSet());
+        // La tienda abre con la investigación: antes, los títulos de las pistas contarían de qué va la historia.
         List<PistaEnVenta> tienda = pistas.findByPartidaIdOrderByIdAsc(partidaId).stream()
-                .filter(p -> p.getPrecio() != null && !yaTengo.contains(p.getId()))
+                .filter(p -> investigando && p.getPrecio() != null && !yaTengo.contains(p.getId()))
                 .map(p -> new PistaEnVenta(p.getId(), p.getTitulo(), p.getPrecio()))
                 .toList();
 
