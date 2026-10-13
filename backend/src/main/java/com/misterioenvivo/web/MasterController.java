@@ -47,6 +47,13 @@ public class MasterController {
         juego.marcarAsesino(s.partidaId(), id, Boolean.TRUE.equals(datos.asesino()));
     }
 
+    /** Publica en el tablón la respuesta de ese jugador a la encuesta del viernes (con nombre o sin él). */
+    @PostMapping("/jugadores/{id}/encuesta/revelar")
+    public Map<String, Long> revelarEncuesta(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @PathVariable("id") Long id,
+                                             @RequestBody RevelarEncuesta datos) {
+        return Map.of("id", juego.revelarEncuesta(s.partidaId(), id, Boolean.TRUE.equals(datos.conNombre())));
+    }
+
     /** Crea o actualiza la pista "El arma" con las armas elegidas por los asesinos (queda bloqueada). */
     @PostMapping("/arma/pista")
     public Map<String, Long> pistaArma(@RequestAttribute(Sesion.ATRIBUTO) Sesion s) {

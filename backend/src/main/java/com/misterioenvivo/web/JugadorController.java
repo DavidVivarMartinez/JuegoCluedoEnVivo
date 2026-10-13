@@ -67,6 +67,13 @@ public class JugadorController {
         juego.elegirArma(sesion.jugadorId(), datos.jugadorId());
     }
 
+    /** Encuesta del viernes: a quién mataría y con la herramienta de quién. Se cierra al empezar la investigación. */
+    @PutMapping("/encuesta")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void encuesta(@RequestAttribute(Sesion.ATRIBUTO) Sesion sesion, @RequestBody EncuestaEntrada datos) {
+        juego.responderEncuesta(sesion.jugadorId(), datos);
+    }
+
     /** Casilla del cuaderno de deducción (sospechoso, arma o estancia). */
     @PutMapping("/deduccion")
     public MarcaDto marcar(@RequestAttribute(Sesion.ATRIBUTO) Sesion sesion, @RequestBody MarcaEntrada datos) {

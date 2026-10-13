@@ -130,6 +130,8 @@ function Partida({ datos, hacer, alSalir, recargar }) {
 
       <Asesinos datos={datos} hacer={hacer} />
 
+      <EncuestaMaster datos={datos} hacer={hacer} />
+
       <TablonMaster entradas={datos.tablon ?? []} hacer={hacer} />
 
       <Reglas datos={datos} hacer={hacer} recargar={recargar} />
@@ -824,6 +826,63 @@ function Asesinos({ datos, hacer }) {
             La pista dice el oficio, no el nombre, y se crea bloqueada: desbloquéala en Pistas cuando quieras. El arma no se puede cambiar desde que la fase pasa a Investigación.
           </p>
         </article>
+      )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Encuesta del viernes
+
+/** Lo que contestó cada uno a "¿a quién matarías y con qué?". Se revela en el tablón, con nombre o sin él. */
+function EncuestaMaster({ datos, hacer }) {
+  const [abierta, setAbierta] = useState(false)
+  const nombres = new Map(datos.jugadores.map((j) => [j.id, j]))
+  if (datos.master) nombres.set(datos.master.id, { ...datos.master, herramienta: null })
+  const contestadas = datos.jugadores.filter((j) => j.encuestaVictimaId && j.encuestaArmaDeId)
+  const sinContestar = datos.jugadores.filter((j) => !j.encuestaVictimaId || !j.encuestaArmaDeId)
+
+  return (
+    <>
+      <h2>Encuesta del viernes</h2>
+      <p className="tenue">
+        «¿A quién matarías y con qué?» Lo contestan antes del crimen (se cierra al pasar a Investigación). El sábado ve
+        soltándolas en el tablón para confundir: con nombre o como «alguien de la casa».
+      </p>
+      <button type="button" className="enlace" onClick={() => setAbierta(!abierta)}>
+        {abierta ? 'Ocultar respuestas' : `Ver respuestas (${contestadas.length} de ${datos.jugadores.length})`}
+      </button>
+      {abierta && (
+        <>
+          {contestadas.map((j) => {
+            const victima = nombres.get(j.encuestaVictimaId)
+            const duenio = nombres.get(j.encuestaArmaDeId)
+            return (
+              <article key={j.id} className="tarjeta">
+                <p>
+                  <strong>{j.nombre}</strong> → <strong>{victima?.nombre ?? '?'}</strong>, con{' '}
+                  {duenio?.herramienta ?? '?'} {duenio && duenio.id === j.id ? '(la suya)' : duenio ? `(de ${duenio.nombre})` : ''}
+                </p>
+                <div className="fila">
+                  {j.encuestaRevelada ? (
+                    <span className="etiqueta cumplido">Revelada</span>
+                  ) : (
+                    <>
+                      <button onClick={() => hacer('POST', `/jugadores/${j.id}/encuesta/revelar`, { conNombre: true })}>
+                        Revelar con nombre
+                      </button>
+                      <button onClick={() => hacer('POST', `/jugadores/${j.id}/encuesta/revelar`, { conNombre: false })}>
+                        Revelar sin nombre
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+            )
+          })}
+          {sinContestar.length > 0 && (
+            <p className="tenue">Sin contestar: {sinContestar.map((j) => j.nombre).join(', ')}.</p>
+          )}
+        </>
       )}
     </>
   )

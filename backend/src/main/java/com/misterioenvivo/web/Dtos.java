@@ -29,6 +29,10 @@ public final class Dtos {
     public record MarcaAsesino(Boolean asesino) { }
     /** El asesino elige de quién es la herramienta que usa (la suya o la de otro); null = ninguna. */
     public record EleccionArma(Long jugadorId) { }
+    /** Encuesta del viernes: a quién mataría y con la herramienta de quién. */
+    public record EncuestaEntrada(Long victimaId, Long armaDeId) { }
+    /** El Máster publica en el tablón la respuesta de un jugador, con su nombre o como "alguien de la casa". */
+    public record RevelarEncuesta(Boolean conNombre) { }
     public record FichaEntrada(String nombre, Integer edad, String profesion, String pareja, String imagenUrl,
                                String herramienta, String personalidad, String relaciones, String contexto,
                                String loQueSabeMaster, String motivoPotencial) { }
@@ -142,7 +146,9 @@ public final class Dtos {
                                List<String> lugares, List<MarcaDto> deduccion, List<PublicacionDto> tablon,
                                List<VisionDto> visiones, List<SobreSellado> sobresSellados, List<HabilidadDto> habilidades,
                                List<TratoDto> tratos, AcusacionFinalDto acusacionFinal,
-                               List<AcusacionFinalDto> acusacionesFinales) { }
+                               List<AcusacionFinalDto> acusacionesFinales, EncuestaDto encuesta) { }
+    /** Mi respuesta a la encuesta del viernes; "abierta" mientras no empiece la investigación. */
+    public record EncuestaDto(Long victimaId, Long armaDeId, boolean abierta, Instant en) { }
 
     // ---------- Panel del Máster ----------
     public record ObjetivoMaster(Long id, String texto, EstadoObjetivo estado, boolean principal, TipoObjetivo tipo,
@@ -152,7 +158,8 @@ public final class Dtos {
                                 String relaciones, String contexto, String loQueSabeMaster, String motivoPotencial,
                                 boolean asesino, Long armaDeId, int dinero,
                                 List<SecretoDto> secretos, List<ObjetivoMaster> objetivos, long mensajesSinLeer,
-                                List<HabilidadDto> habilidades) { }
+                                List<HabilidadDto> habilidades, Long encuestaVictimaId, Long encuestaArmaDeId,
+                                Instant encuestaEn, boolean encuestaRevelada) { }
     public record PistaMaster(Long id, String titulo, String contenido, String nota, Integer precio, List<Long> jugadorIds,
                               String codigoQr, boolean falsa, EstadoFalsa estadoFalsa, Long autorFalsaId, Long falsaParaId) { }
     public record EnvioMaster(Long id, TipoEnvio tipo, Long pistaId, String pistaTitulo, String imagenUrl, String nota,

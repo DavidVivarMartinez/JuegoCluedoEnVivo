@@ -81,6 +81,21 @@ function Entrada({ entrada: e, nueva, master = false, esperaMiRespuesta = false,
       </article>
     )
   }
+  if (e.tipo === 'ENCUESTA') {
+    return (
+      <article className={`tarjeta publicacion encuesta ${nueva ? 'nuevo' : ''}`}>
+        <p className="publicacion-cabecera">
+          <span>
+            <strong>Encuesta del viernes</strong>
+            {e.autor ? <span className="tenue"> · {e.autor}</span> : <span className="tenue"> · alguien de la casa</span>}
+          </span>
+          <span className="tenue">{hora(e.creadaEn)}</span>
+        </p>
+        <p className="rumor-texto">«{e.texto}»</p>
+        {children}
+      </article>
+    )
+  }
   if (e.tipo === 'AVISO') {
     return (
       <article className={`tarjeta publicacion aviso ${nueva ? 'nuevo' : ''}`}>

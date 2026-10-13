@@ -151,8 +151,11 @@ public class JuegoService {
                 })
                 .toList();
 
+        // El objetivo principal (descubrir al asesino) no se ve hasta que hay crimen: desde la investigación.
+        boolean investigando = armaBloqueada(partida);
         Map<Long, List<EntregaDto>> entregasPorObjetivo = agrupar(entregas.findByObjetivoJugadorIdOrderByIdAsc(jugadorId));
         List<ObjetivoDto> misObjetivos = objetivos.findByJugadorIdOrderByIdAsc(jugadorId).stream()
+                .filter(o -> investigando || !o.isPrincipal())
                 .map(o -> new ObjetivoDto(o.getId(), o.getTexto(), o.getEstado(), o.isPrincipal(), o.getTipo(),
                         o.getCantidad(), o.getRecompensa() != null, o.getRecompensaDinero(),
                         entregasPorObjetivo.getOrDefault(o.getId(), List.of())))
@@ -213,7 +216,10 @@ public class JuegoService {
                 habilidades.findByJugadorIdOrderByIdAsc(jugadorId).stream().map(JuegoService::dtoHabilidad).toList(),
                 misTratos,
                 yo.getFinalEn() == null ? null : dtoFinal(yo),
-                finales);
+                finales,
+                new EncuestaDto(yo.getEncuestaVictima() == null ? null : yo.getEncuestaVictima().getId(),
+                        yo.getEncuestaArmaDe() == null ? null : yo.getEncuestaArmaDe().getId(),
+                        !investigando, yo.getEncuestaEn()));
     }
 
     /** Un trato visto por uno de sus dos jugadores. Si me piden una pista, cuáles mías no tiene el otro. */
@@ -373,7 +379,10 @@ public class JuegoService {
                         secretosPorJugador.getOrDefault(j.getId(), List.of()),
                         objetivosPorJugador.getOrDefault(j.getId(), List.of()),
                         sinLeer.getOrDefault(j.getId(), 0L),
-                        habilidadesPorJugador.getOrDefault(j.getId(), List.of())))
+                        habilidadesPorJugador.getOrDefault(j.getId(), List.of()),
+                        j.getEncuestaVictima() == null ? null : j.getEncuestaVictima().getId(),
+                        j.getEncuestaArmaDe() == null ? null : j.getEncuestaArmaDe().getId(),
+                        j.getEncuestaEn(), j.isEncuestaRevelada()))
                 .toList();
 
         List<PistaMaster> listaPistas = pistas.findByPartidaIdOrderByIdAsc(partidaId).stream()
@@ -583,6 +592,68 @@ public class JuegoService {
         yo.setArmaDe(duenio);
         registrar(partida, "ARMA", yo.getNombre() + " elige " + duenio.getHerramienta()
                 + (duenio.getId().equals(yo.getId()) ? " (la suya)" : " (la de " + duenio.getNombre() + ")"));
+    }
+
+    /**
+     * Encuesta del viernes: antes de que pase nada, cada jugador dice a quién mataría y con la herramienta
+     * de quién. Vale cualquier participante como víctima (el Máster incluido). Se cierra con la investigación.
+     */
+    public void responderEncuesta(Long jugadorId, EncuestaEntrada datos) {
+        Jugador yo = jugadores.findById(jugadorId).orElseThrow(() -> noEncontrado("Jugador"));
+        Partida partida = yo.getPartida();
+        if (armaBloqueada(partida)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La encuesta se cerró al empezar la investigación");
+        }
+        if (datos.victimaId() == null || datos.armaDeId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Elige a quién y con qué");
+        }
+        Jugador victima = jugadores.findByIdAndPartidaId(datos.victimaId(), partida.getId())
+                .orElseThrow(() -> noEncontrado("Personaje"));
+        if (victima.getId().equals(yo.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A ti mismo no: elige a otro");
+        }
+        Jugador duenio = jugadores.findByIdAndPartidaId(datos.armaDeId(), partida.getId())
+                .orElseThrow(() -> noEncontrado("Personaje"));
+        if (duenio.getHerramienta() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, duenio.getNombre() + " no tiene herramienta");
+        }
+        yo.setEncuestaVictima(victima);
+        yo.setEncuestaArmaDe(duenio);
+        yo.setEncuestaEn(Instant.now());
+        yo.setEncuestaRevelada(false);
+    }
+
+    /**
+     * El Máster publica en el tablón lo que contestó un jugador, con su nombre o como "alguien de la casa".
+     * Sirve para sembrar sospechas el sábado: lo que uno dijo el viernes no prueba nada, pero suena.
+     */
+    public Long revelarEncuesta(Long partidaId, Long jugadorId, boolean conNombre) {
+        Jugador jugador = jugador(partidaId, jugadorId);
+        if (jugador.getEncuestaVictima() == null || jugador.getEncuestaArmaDe() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, jugador.getNombre() + " no ha contestado la encuesta");
+        }
+        Jugador victima = jugador.getEncuestaVictima();
+        Jugador duenio = jugador.getEncuestaArmaDe();
+        String arma = duenio.getId().equals(jugador.getId())
+                ? "su propia herramienta, " + minuscula(duenio.getHerramienta())
+                : minuscula(duenio.getHerramienta()) + " (la herramienta de " + duenio.getNombre() + ")";
+        Publicacion p = new Publicacion();
+        p.setPartida(jugador.getPartida());
+        p.setTipo(TipoPublicacion.ENCUESTA);
+        p.setAutor(conNombre ? jugador : null);
+        p.setTexto("Si tuviera que matar a alguien de esta casa, sería a " + victima.getNombre() + ", con " + arma + ".");
+        publicaciones.save(p);
+        jugador.setEncuestaRevelada(true);
+        registrar(jugador.getPartida(), "ENCUESTA", "Revelada la encuesta de " + jugador.getNombre()
+                + (conNombre ? " con su nombre" : " sin nombre") + ": " + victima.getNombre() + ", " + arma);
+        return p.getId();
+    }
+
+    private static String minuscula(String texto) {
+        if (texto == null || texto.isEmpty()) {
+            return texto;
+        }
+        return Character.toLowerCase(texto.charAt(0)) + texto.substring(1);
     }
 
     /**

@@ -7,5 +7,7 @@ public enum TipoPublicacion {
     /** Rumor anónimo (habilidad de un personaje). */
     RUMOR,
     /** Aviso del Máster al grupo. */
-    AVISO
+    AVISO,
+    /** Respuesta de un jugador a la encuesta del viernes, revelada por el Máster (con nombre o sin él). */
+    ENCUESTA
 }

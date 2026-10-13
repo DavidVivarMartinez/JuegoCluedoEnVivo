@@ -60,6 +60,18 @@ public class Jugador {
     private String finalRazon;
     private Instant finalEn;
 
+    // --- Encuesta del viernes: "¿a quién matarías y con qué?" (antes del crimen; el Máster la revela el sábado) ---
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "encuesta_victima_id")
+    private Jugador encuestaVictima;
+    /** Dueño de la herramienta con la que lo haría. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "encuesta_arma_de_id")
+    private Jugador encuestaArmaDe;
+    private Instant encuestaEn;
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean encuestaRevelada = false;
+
     // --- Ficha visible solo para el propio jugador ---
     @Column(length = 4000)
     private String personalidad;
@@ -117,4 +129,12 @@ public class Jugador {
     public void setLoQueSabeMaster(String loQueSabeMaster) { this.loQueSabeMaster = loQueSabeMaster; }
     public String getMotivoPotencial() { return motivoPotencial; }
     public void setMotivoPotencial(String motivoPotencial) { this.motivoPotencial = motivoPotencial; }
+    public Jugador getEncuestaVictima() { return encuestaVictima; }
+    public void setEncuestaVictima(Jugador encuestaVictima) { this.encuestaVictima = encuestaVictima; }
+    public Jugador getEncuestaArmaDe() { return encuestaArmaDe; }
+    public void setEncuestaArmaDe(Jugador encuestaArmaDe) { this.encuestaArmaDe = encuestaArmaDe; }
+    public Instant getEncuestaEn() { return encuestaEn; }
+    public void setEncuestaEn(Instant encuestaEn) { this.encuestaEn = encuestaEn; }
+    public boolean isEncuestaRevelada() { return encuestaRevelada; }
+    public void setEncuestaRevelada(boolean encuestaRevelada) { this.encuestaRevelada = encuestaRevelada; }
 }

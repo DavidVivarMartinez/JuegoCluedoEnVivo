@@ -512,6 +512,10 @@ label.casilla { display: flex; align-items: center; gap: .1rem; color: var(--tex
 .publicacion-cabecera > .tenue:last-child, .publicacion-cabecera > .etiqueta:last-child { flex: none; }
 .publicacion.acusacion { border-left: 3px solid var(--peligro); }
 .publicacion.aviso { border-left: 3px solid var(--acento); }
+.publicacion.encuesta { border-left: 3px solid var(--bien); }
+.tarjeta.encuesta { border-left: 3px solid var(--bien); }
+.tarjeta.encuesta select { margin: .3rem 0 0; }
+.tarjeta.encuesta .fila { margin-top: .6rem; }
 .publicacion.rumor { background: repeating-linear-gradient(135deg, var(--panel), var(--panel) 10px, var(--panel-2) 10px, var(--panel-2) 20px); }
 .rumor-texto { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 1.05rem; }
 .respuesta { margin-top: .6rem; padding: .6rem .7rem; border-radius: 8px; background: var(--campo); border: 1px solid var(--borde); }

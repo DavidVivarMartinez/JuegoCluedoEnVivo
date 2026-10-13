@@ -128,7 +128,16 @@ export default function PanelJugador({ sesion, alSalir }) {
       <main className="contenido">
         {pestana === 'personaje' && <Personaje datos={datos} otros={otros} alAbrir={abrirFicha} alSalir={alSalir} recargar={recargar} />}
         {pestana === 'objetivos' && (
-          <Objetivos objetivos={datos.objetivos} otros={otros} alEntregar={entregar} alBorrarEntrega={borrarEntrega} />
+          <Objetivos
+            objetivos={datos.objetivos}
+            otros={otros}
+            yo={datos.personaje}
+            fase={datos.partida.fase}
+            encuesta={datos.encuesta}
+            recargar={recargar}
+            alEntregar={entregar}
+            alBorrarEntrega={borrarEntrega}
+          />
         )}
         {pestana === 'pistas' && <PistasYSecretos datos={datos} otros={otros} accion={accion} nuevas={nuevas} alCanjear={canjear} />}
         {pestana === 'tablon' && <Tablon datos={datos} otros={otros} recargar={recargar} nuevas={nuevas} />}
@@ -252,14 +261,26 @@ function Personaje({ datos, otros, alAbrir, alSalir, recargar }) {
 
 // ---------------------------------------------------------------- Objetivos
 
-function Objetivos({ objetivos, otros, alEntregar, alBorrarEntrega }) {
+function Objetivos({ objetivos, otros, yo, fase, encuesta, recargar, alEntregar, alBorrarEntrega }) {
   const principal = objetivos.find((o) => o.principal)
   const secundarios = objetivos.filter((o) => !o.principal)
   const comunes = { otros, alEntregar, alBorrarEntrega }
+  // Antes del crimen no hay asesino que buscar: el principal se guarda hasta que empieza la investigación.
+  const antesDelCrimen = fase === 'PREPARACION' || fase === 'CONVIVENCIA'
   return (
     <section>
+      {encuesta && (antesDelCrimen || encuesta.victimaId) && (
+        <EncuestaViernes encuesta={encuesta} otros={otros} yo={yo} recargar={recargar} />
+      )}
+
       <h2>Objetivo principal</h2>
-      {principal ? <Objetivo objetivo={principal} principal {...comunes} /> : <Vacio>Todavía no tienes objetivo principal.</Vacio>}
+      {principal ? (
+        <Objetivo objetivo={principal} principal {...comunes} />
+      ) : antesDelCrimen ? (
+        <Vacio>Se te revelará cuando empiece la investigación. Esta noche, disfruta de la cena.</Vacio>
+      ) : (
+        <Vacio>Todavía no tienes objetivo principal.</Vacio>
+      )}
 
       <h2>Objetivos secundarios</h2>
       {secundarios.length === 0 ? (
@@ -271,6 +292,93 @@ function Objetivos({ objetivos, otros, alEntregar, alBorrarEntrega }) {
         <Objetivo key={o.id} objetivo={o} {...comunes} />
       ))}
     </section>
+  )
+}
+
+/**
+ * Encuesta del viernes: "¿a quién matarías y con qué?". Se contesta antes del crimen y se puede cambiar
+ * hasta que empieza la investigación; el sábado el Máster va revelando respuestas en el tablón.
+ */
+function EncuestaViernes({ encuesta, otros, yo, recargar }) {
+  const [victimaId, setVictimaId] = useState(encuesta.victimaId ? String(encuesta.victimaId) : '')
+  const [armaDeId, setArmaDeId] = useState(encuesta.armaDeId ? String(encuesta.armaDeId) : '')
+  const [error, setError] = useState(null)
+  const [guardando, setGuardando] = useState(false)
+  const [guardado, setGuardado] = useState(false)
+
+  const todos = [yo, ...otros]
+  const porId = new Map(todos.map((p) => [p.id, p]))
+  const conHerramienta = todos.filter((p) => p.herramienta)
+  const victima = encuesta.victimaId ? porId.get(encuesta.victimaId) : null
+  const arma = encuesta.armaDeId ? porId.get(encuesta.armaDeId) : null
+  const contestada = Boolean(victima && arma)
+  const cambiado = String(encuesta.victimaId ?? '') !== victimaId || String(encuesta.armaDeId ?? '') !== armaDeId
+
+  async function guardar(evento) {
+    evento.preventDefault()
+    setError(null)
+    setGuardando(true)
+    try {
+      await api('PUT', '/yo/encuesta', { victimaId: Number(victimaId), armaDeId: Number(armaDeId) })
+      setGuardado(true)
+      await recargar()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  if (!encuesta.abierta) {
+    return (
+      <article className="tarjeta encuesta">
+        <span className="etiqueta">Encuesta del viernes</span>
+        <h3>Lo que dijiste anoche</h3>
+        {contestada ? (
+          <p>
+            Si tuvieras que matar a alguien, sería a <strong>{victima.nombre}</strong>, con{' '}
+            <strong>{arma.id === yo.id ? 'tu propia herramienta' : `la herramienta de ${arma.nombre}`}</strong>. Ya no se puede cambiar.
+            El Máster puede sacarlo a la luz cuando quiera.
+          </p>
+        ) : (
+          <p className="tenue">No contestaste. Menos mal.</p>
+        )}
+      </article>
+    )
+  }
+
+  return (
+    <form className="tarjeta encuesta" onSubmit={guardar}>
+      <span className="etiqueta">Encuesta del viernes</span>
+      <h3>Antes de que pase nada…</h3>
+      <p className="tenue">
+        Si esta noche tuvieras que matar a alguien de esta casa, ¿a quién sería y con qué? Puedes cambiarlo hasta mañana. Lo que
+        contestes podría salir a la luz.
+      </p>
+      {error && <p className="error redondeado">{error}</p>}
+      <select value={victimaId} onChange={(e) => { setVictimaId(e.target.value); setGuardado(false) }} aria-label="A quién">
+        <option value="">¿A quién?</option>
+        {otros.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.nombre}
+          </option>
+        ))}
+      </select>
+      <select value={armaDeId} onChange={(e) => { setArmaDeId(e.target.value); setGuardado(false) }} aria-label="Con qué">
+        <option value="">¿Con qué?</option>
+        {conHerramienta.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.herramienta} {p.id === yo.id ? '(la tuya)' : `(de ${p.nombre})`}
+          </option>
+        ))}
+      </select>
+      <div className="fila">
+        <button className="primario" disabled={guardando || !victimaId || !armaDeId || (!cambiado && contestada)}>
+          {contestada ? 'Cambiar mi respuesta' : 'Guardar mi respuesta'}
+        </button>
+        {contestada && !cambiado && <span className="etiqueta cumplido">{guardado ? 'Guardado' : 'Contestada'}</span>}
+      </div>
+    </form>
   )
 }
 
