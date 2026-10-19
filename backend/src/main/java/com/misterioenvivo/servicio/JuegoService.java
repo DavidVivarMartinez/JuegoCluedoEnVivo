@@ -152,13 +152,17 @@ public class JuegoService {
                 .toList();
 
         // El objetivo principal (descubrir al asesino) no se ve hasta que hay crimen: desde la investigación.
+        // El asesino, en cuanto el Máster le marca, ve su misión en lugar de ese principal.
         boolean investigando = armaBloqueada(partida);
         Map<Long, List<EntregaDto>> entregasPorObjetivo = agrupar(entregas.findByObjetivoJugadorIdOrderByIdAsc(jugadorId));
-        List<ObjetivoDto> misObjetivos = objetivos.findByJugadorIdOrderByIdAsc(jugadorId).stream()
-                .filter(o -> investigando || !o.isPrincipal())
+        List<Objetivo> todosMisObjetivos = objetivos.findByJugadorIdOrderByIdAsc(jugadorId);
+        boolean conMision = conMision(todosMisObjetivos);
+        List<ObjetivoDto> misObjetivos = todosMisObjetivos.stream()
+                .filter(o -> Objetivo.aplica(o.isDeAsesino(), o.isPrincipal(), esAsesino, conMision))
+                .filter(o -> investigando || o.isDeAsesino() || !o.isPrincipal())
                 .map(o -> new ObjetivoDto(o.getId(), o.getTexto(), o.getEstado(), o.isPrincipal(), o.getTipo(),
                         o.getCantidad(), o.getRecompensa() != null, o.getRecompensaDinero(),
-                        entregasPorObjetivo.getOrDefault(o.getId(), List.of())))
+                        entregasPorObjetivo.getOrDefault(o.getId(), List.of()), o.isDeAsesino()))
                 .toList();
 
         List<Pista> visibles = pistas.visiblesPara(jugadorId);
@@ -280,6 +284,8 @@ public class JuegoService {
     public Long entregar(Long jugadorId, Long objetivoId, EntregaEntrada datos) {
         Objetivo objetivo = objetivos.findById(objetivoId)
                 .filter(o -> o.getJugador().getId().equals(jugadorId))
+                .filter(o -> Objetivo.aplica(o.isDeAsesino(), o.isPrincipal(), o.getJugador().isAsesino(),
+                        conMision(objetivos.findByJugadorIdOrderByIdAsc(jugadorId))))
                 .orElseThrow(() -> noEncontrado("Objetivo"));
         exigirAbierto(objetivo);
 
@@ -361,7 +367,8 @@ public class JuegoService {
                         Collectors.mapping(o -> new ObjetivoMaster(o.getId(), o.getTexto(), o.getEstado(), o.isPrincipal(),
                                 o.getTipo(), o.getCantidad(),
                                 o.getRecompensa() == null ? null : o.getRecompensa().getId(), o.getRecompensaDinero(),
-                                entregasPorObjetivo.getOrDefault(o.getId(), List.of())), Collectors.toList())));
+                                entregasPorObjetivo.getOrDefault(o.getId(), List.of()), o.isDeAsesino()),
+                                Collectors.toList())));
         List<Mensaje> ultimosMensajes = mensajes.findTop100ByDestinatarioPartidaIdOrderByIdDesc(partidaId);
         Map<Long, Long> sinLeer = ultimosMensajes.stream()
                 .filter(m -> !m.isLeido())
@@ -464,7 +471,12 @@ public class JuegoService {
         for (Jugador j : participantes) {
             List<String> desglose = new ArrayList<>();
             int puntos = 0;
-            List<ObjetivoMaster> suyos = objetivosPorJugador.getOrDefault(j.getId(), List.of());
+            // Solo cuentan los objetivos que ese jugador ve (las misiones de asesino, solo para los asesinos).
+            List<ObjetivoMaster> todos = objetivosPorJugador.getOrDefault(j.getId(), List.of());
+            boolean conMision = todos.stream().anyMatch(o -> o.deAsesino() && o.principal());
+            List<ObjetivoMaster> suyos = todos.stream()
+                    .filter(o -> Objetivo.aplica(o.deAsesino(), o.principal(), j.isAsesino(), conMision))
+                    .toList();
             boolean principal = suyos.stream().anyMatch(o -> o.principal() && o.estado() == EstadoObjetivo.CUMPLIDO);
             int secundarios = (int) suyos.stream().filter(o -> !o.principal() && o.estado() == EstadoObjetivo.CUMPLIDO).count();
             if (principal) {
@@ -813,6 +825,7 @@ public class JuegoService {
         if (datos.recompensaDinero() != null) {
             objetivo.setRecompensaDinero(noNegativo(datos.recompensaDinero(), "recompensaDinero"));
         }
+        objetivo.setDeAsesino(Boolean.TRUE.equals(datos.deAsesino()));
         if (Boolean.TRUE.equals(datos.principal())) {
             hacerPrincipal(objetivo, jugadorId);
         }
@@ -832,6 +845,12 @@ public class JuegoService {
         }
         if (datos.recompensaDinero() != null) {
             objetivo.setRecompensaDinero(noNegativo(datos.recompensaDinero(), "recompensaDinero"));
+        }
+        if (datos.deAsesino() != null && datos.deAsesino() != objetivo.isDeAsesino()) {
+            objetivo.setDeAsesino(datos.deAsesino());
+            if (objetivo.isPrincipal()) {
+                hacerPrincipal(objetivo, objetivo.getJugador().getId());
+            }
         }
         if (datos.principal() != null) {
             if (datos.principal()) {
@@ -880,12 +899,22 @@ public class JuegoService {
         objetivos.delete(objetivo);
     }
 
-    /** Solo hay un objetivo principal por jugador: al marcar uno, los demás pasan a secundarios. */
+    /**
+     * Solo hay un objetivo principal por jugador (y otro de asesino, por si le toca serlo): al marcar uno,
+     * los demás de su misma clase pasan a secundarios.
+     */
     private void hacerPrincipal(Objetivo objetivo, Long jugadorId) {
         for (Objetivo otro : objetivos.findByJugadorIdOrderByIdAsc(jugadorId)) {
-            otro.setPrincipal(false);
+            if (otro.isDeAsesino() == objetivo.isDeAsesino()) {
+                otro.setPrincipal(false);
+            }
         }
         objetivo.setPrincipal(true);
+    }
+
+    /** Si el jugador tiene un principal de asesino (la misión que sustituye al suyo si le toca serlo). */
+    private static boolean conMision(List<Objetivo> suyos) {
+        return suyos.stream().anyMatch(o -> o.isDeAsesino() && o.isPrincipal());
     }
 
     private static int cantidadValida(int cantidad) {

@@ -438,6 +438,71 @@ class FlujoPartidaTest {
                 .andExpect(status().is(esperado));
     }
 
+    @Test
+    void laMisionDeAsesinoSoloLaVeQuienLoEs() throws Exception {
+        String master = crearPartida("Partida misión");
+        long ana = crearJugador(master, "Ana");
+        long luis = crearJugador(master, "Luis");
+        JsonNode estado = leer(get("/api/master/estado"), master);
+        String codigoAna = codigoDe(estado, ana);
+        String codigoLuis = codigoDe(estado, luis);
+
+        // Cada jugador tiene su principal de siempre y, cargada por si le toca, la misión de asesino
+        long[] principal = new long[2];
+        long[] misionPrincipal = new long[2];
+        long[] mision = new long[2];
+        long[] ids = {ana, luis};
+        for (int i = 0; i < 2; i++) {
+            crear(post("/api/master/jugadores/" + ids[i] + "/objetivos"), master, "{\"texto\":\"Ayudar en la cena\"}");
+            principal[i] = crear(post("/api/master/jugadores/" + ids[i] + "/objetivos"), master,
+                    "{\"texto\":\"Descubrir al asesino\",\"principal\":true}");
+            misionPrincipal[i] = crear(post("/api/master/jugadores/" + ids[i] + "/objetivos"), master,
+                    "{\"texto\":\"Que no os descubran\",\"principal\":true,\"deAsesino\":true}");
+            mision[i] = crear(post("/api/master/jugadores/" + ids[i] + "/objetivos"), master,
+                    "{\"texto\":\"Acusa a otro en el tablón\",\"deAsesino\":true,\"recompensaDinero\":40}");
+        }
+        // El principal de asesino no le quita el principal de siempre (son de distinta clase)
+        estado = leer(get("/api/master/estado"), master);
+        assertThat(objetivoDe(estado, ana, principal[0]).get("principal").asBoolean()).isTrue();
+        assertThat(objetivoDe(estado, ana, misionPrincipal[0]).get("principal").asBoolean()).isTrue();
+        assertThat(objetivoDe(estado, ana, mision[0]).get("deAsesino").asBoolean()).isTrue();
+
+        // Antes de marcar a nadie, nadie ve la misión (y el principal sigue oculto hasta la investigación)
+        assertThat(leer(get("/api/yo"), codigoAna).toString()).doesNotContain("Que no os descubran").doesNotContain("Acusa a otro");
+
+        // Ana es la asesina: ve su misión (ya en Convivencia, el viernes por la noche) y no su principal de siempre
+        enviar(put("/api/master/fase"), master, "{\"fase\":\"CONVIVENCIA\"}");
+        enviar(put("/api/master/jugadores/" + ana + "/asesino"), master, "{\"asesino\":true}");
+        JsonNode panelAna = leer(get("/api/yo"), codigoAna);
+        assertThat(panelAna.toString()).contains("Que no os descubran").contains("Acusa a otro").contains("Ayudar en la cena")
+                .doesNotContain("Descubrir al asesino");
+        assertThat(objetivo(panelAna, misionPrincipal[0]).get("principal").asBoolean()).isTrue();
+        assertThat(objetivo(panelAna, mision[0]).get("deAsesino").asBoolean()).isTrue();
+
+        // Luis no ve ninguna misión; en la investigación ve su principal de siempre
+        enviar(put("/api/master/fase"), master, "{\"fase\":\"INVESTIGACION\"}");
+        JsonNode panelLuis = leer(get("/api/yo"), codigoLuis);
+        assertThat(panelLuis.toString()).contains("Descubrir al asesino").doesNotContain("Que no os descubran")
+                .doesNotContain("Acusa a otro");
+        // ...ni puede entregar pruebas en una misión que no es suya
+        mvc.perform(post("/api/yo/objetivos/" + mision[1] + "/entregas").header("Authorization", "Bearer " + codigoLuis)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"texto\":\"hecho\"}"))
+                .andExpect(status().isNotFound());
+        // Ana sí, y al validarla cobra
+        mvc.perform(post("/api/yo/objetivos/" + mision[0] + "/entregas").header("Authorization", "Bearer " + codigoAna)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"texto\":\"Acusé a Luis\"}"))
+                .andExpect(status().isCreated());
+        enviar(put("/api/master/objetivos/" + mision[0]), master, "{\"estado\":\"CUMPLIDO\"}");
+        assertThat(leer(get("/api/yo"), codigoAna).get("dinero").asInt()).isEqualTo(40);
+
+        // En el ranking cada uno cuenta solo lo suyo: Ana 3 (ayudar, misión principal, acusar), Luis 2
+        estado = leer(get("/api/master/estado"), master);
+        for (JsonNode fila : estado.get("ranking")) {
+            int esperado = fila.get("jugadorId").asLong() == ana ? 3 : 2;
+            assertThat(fila.get("objetivosTotal").asInt()).isEqualTo(esperado);
+        }
+    }
+
     // ---------- utilidades ----------
 
     private JsonNode enviarYLeer(MockHttpServletRequestBuilder peticion, String codigo, String cuerpo) throws Exception {

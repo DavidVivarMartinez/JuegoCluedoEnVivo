@@ -117,17 +117,30 @@ export async function importarPartida(datos, api, log = () => {}, opciones = {})
   log(`Pistas nuevas: ${cuenta.pistas} (de ${todas.length})`)
 
   // ---------- Objetivos (por texto) y su pista de recompensa ----------
+  // Los «Objetivos del asesino» se cargan en todos los personajes: cada uno solo los ve si le toca serlo.
+  // Un servidor antiguo los mostraría a todos como objetivos normales, así que solo se cargan si los entiende.
+  let deAsesino = datos.objetivosAsesino ?? []
+  if (deAsesino.length > 0 && !estado.jugadores.some((j) => j.objetivos.some((o) => 'deAsesino' in o))) {
+    log('Aviso: el servidor todavía no admite objetivos del asesino; se saltan (actualiza la app y vuelve a importar)')
+    deAsesino = []
+  }
+  const objetivosDe = (p) => [
+    ...p.objetivos.map((o) => ({ ...o, deAsesino: false })),
+    ...deAsesino.map((o) => ({ ...o, deAsesino: true })),
+  ]
+  const mismo = (x, o) => x.texto.trim() === o.texto.trim() && !!x.deAsesino === o.deAsesino
   for (const p of datos.personajes) {
     const j = de(p)
-    if (!j || p.objetivos.length === 0) continue
+    const lista = objetivosDe(p)
+    if (!j || lista.length === 0) continue
     let existentes = j.objetivos
     if (reemplazarObjetivos) {
       for (const o of existentes) await api('DELETE', `/objetivos/${o.id}`)
       existentes = []
     }
-    for (const o of p.objetivos) {
-      const previo = existentes.find((x) => x.texto.trim() === o.texto.trim())
-      const cuerpo = { texto: o.texto, principal: o.principal, tipo: o.tipo, cantidad: o.cantidad ?? 1, recompensaDinero: o.dinero ?? 0 }
+    for (const o of lista) {
+      const previo = existentes.find((x) => mismo(x, o))
+      const cuerpo = { texto: o.texto, principal: o.principal, tipo: o.tipo, cantidad: o.cantidad ?? 1, recompensaDinero: o.dinero ?? 0, deAsesino: o.deAsesino }
       if (!previo) {
         await api('POST', `/jugadores/${j.id}/objetivos`, cuerpo)
         cuenta.objetivos++
@@ -144,8 +157,8 @@ export async function importarPartida(datos, api, log = () => {}, opciones = {})
     for (const p of datos.personajes) {
       const j = actual.get(normalizar(p.nombre))
       if (!j) continue
-      for (const o of p.objetivos) {
-        const previo = j.objetivos.find((x) => x.texto.trim() === o.texto.trim())
+      for (const o of objetivosDe(p)) {
+        const previo = j.objetivos.find((x) => mismo(x, o))
         if (!previo) continue
         const id = o.pista ? pistaId.get(normalizar(o.pista)) ?? null : null
         if (o.pista && id == null) {

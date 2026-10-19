@@ -111,6 +111,7 @@ p { margin: 0 0 .5rem; overflow-wrap: anywhere; white-space: pre-wrap; }
 .etiqueta.fallido { color: var(--peligro); border-color: var(--peligro); }
 .etiqueta.principal, .etiqueta.entregado { color: var(--acento); border-color: var(--acento); }
 .etiqueta.recompensa { color: var(--bien); border-color: var(--bien); }
+.etiqueta.asesino { color: #fff; background: var(--peligro); border-color: var(--peligro); }
 
 /* ---------- Objetivos: tarjetas desplegables con las pruebas del jugador ---------- */
 

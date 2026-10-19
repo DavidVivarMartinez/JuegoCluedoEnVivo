@@ -263,7 +263,9 @@ function Personaje({ datos, otros, alAbrir, alSalir, recargar }) {
 
 function Objetivos({ objetivos, otros, yo, fase, encuesta, recargar, alEntregar, alBorrarEntrega }) {
   const principal = objetivos.find((o) => o.principal)
-  const secundarios = objetivos.filter((o) => !o.principal)
+  // Misión de asesino: solo llega si el Máster te ha marcado como asesino
+  const mision = objetivos.filter((o) => o.deAsesino && !o.principal)
+  const secundarios = objetivos.filter((o) => !o.principal && !o.deAsesino)
   const comunes = { otros, alEntregar, alBorrarEntrega }
   // Antes del crimen no hay asesino que buscar: el principal se guarda hasta que empieza la investigación.
   const antesDelCrimen = fase === 'PREPARACION' || fase === 'CONVIVENCIA'
@@ -280,6 +282,16 @@ function Objetivos({ objetivos, otros, yo, fase, encuesta, recargar, alEntregar,
         <Vacio>Se te revelará cuando empiece la investigación. Esta noche, disfruta de la cena.</Vacio>
       ) : (
         <Vacio>Todavía no tienes objetivo principal.</Vacio>
+      )}
+
+      {mision.length > 0 && (
+        <>
+          <h2>Tu misión de asesino</h2>
+          <p className="tenue">Solo la ves tú (y tu cómplice, la suya). Cumplirla también te ayuda a que no te descubran.</p>
+          {mision.map((o) => (
+            <Objetivo key={o.id} objetivo={o} {...comunes} />
+          ))}
+        </>
       )}
 
       <h2>Objetivos secundarios</h2>
@@ -392,6 +404,7 @@ function Objetivo({ objetivo: o, otros, alEntregar, alBorrarEntrega, principal =
       <summary>
         <p>{o.texto}</p>
         <span className="fila">
+          {o.deAsesino && <span className="etiqueta asesino">Asesino</span>}
           <span className={`etiqueta ${o.estado.toLowerCase()}`}>{ESTADOS[o.estado]}</span>
           {progreso && abierto && <span className="tenue">{progreso}</span>}
           {o.recompensaDinero > 0 && (
@@ -646,6 +659,7 @@ function TarjetaAsesino({ datos, otros, accion }) {
       ) : (
         <p>Solo tú y el Máster lo sabéis.</p>
       )}
+      {datos.objetivos.some((o) => o.deAsesino) && <p>Tu misión de asesino está en la pestaña Objetivos.</p>}
 
       <h3 className="asesino-arma">Tu arma</h3>
       {error && <p className="error">{error}</p>}

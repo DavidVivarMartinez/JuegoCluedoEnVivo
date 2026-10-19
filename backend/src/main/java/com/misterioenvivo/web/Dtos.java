@@ -39,7 +39,7 @@ public final class Dtos {
     public record TextoEntrada(String texto) { }
     public record SecretoEntrada(String texto, Boolean revelado) { }
     public record ObjetivoEntrada(String texto, EstadoObjetivo estado, Boolean principal, TipoObjetivo tipo,
-                                  Integer cantidad, Integer recompensaDinero) { }
+                                  Integer cantidad, Integer recompensaDinero, Boolean deAsesino) { }
     /** Pista que se desbloquea al cumplir un objetivo; null la quita. */
     public record RecompensaEntrada(Long pistaId) { }
     /** Prueba que aporta el jugador: personaje elegido (tipo PERSONA) y/o texto. */
@@ -133,7 +133,8 @@ public final class Dtos {
                            PistaTitulo pistaRecibida, EstadoTrato estado, Instant creadoEn, List<PistaTitulo> puedoDar) { }
     /** Objetivo tal y como lo ve su dueño: sabe si hay premio, pero no cuál. */
     public record ObjetivoDto(Long id, String texto, EstadoObjetivo estado, boolean principal, TipoObjetivo tipo,
-                              int cantidad, boolean tieneRecompensa, int recompensaDinero, List<EntregaDto> entregas) { }
+                              int cantidad, boolean tieneRecompensa, int recompensaDinero, List<EntregaDto> entregas,
+                              boolean deAsesino) { }
     /** Otro personaje de la partida (el Máster incluido): su ficha pública y lo que yo he anotado sobre él. */
     public record OtroPersonaje(Long id, String nombre, Integer edad, String profesion, String pareja, String imagenUrl,
                                 String herramienta, boolean esMaster, String anotacion, Instant anotacionEn) { }
@@ -152,7 +153,8 @@ public final class Dtos {
 
     // ---------- Panel del Máster ----------
     public record ObjetivoMaster(Long id, String texto, EstadoObjetivo estado, boolean principal, TipoObjetivo tipo,
-                                 int cantidad, Long recompensaPistaId, int recompensaDinero, List<EntregaDto> entregas) { }
+                                 int cantidad, Long recompensaPistaId, int recompensaDinero, List<EntregaDto> entregas,
+                                 boolean deAsesino) { }
     public record JugadorMaster(Long id, String nombre, String codigoAcceso, Integer edad, String profesion,
                                 String pareja, String imagenUrl, String herramienta, String personalidad,
                                 String relaciones, String contexto, String loQueSabeMaster, String motivoPotencial,

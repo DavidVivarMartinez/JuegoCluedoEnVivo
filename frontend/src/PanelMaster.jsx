@@ -502,7 +502,9 @@ function ObjetivosMaster({ jugador, pistas, hacer }) {
     if (await hacer('POST', `/jugadores/${jugador.id}/objetivos`, { texto, tipo, cantidad: Number(cantidad) || 1 })) setTexto('')
   }
 
-  const porValidar = jugador.objetivos.filter((o) => o.estado === 'ENTREGADO').length
+  // Las misiones de asesino están cargadas en todos, pero solo se enseñan cuando ese jugador lo es
+  const visibles = jugador.objetivos.filter((o) => !o.deAsesino || jugador.asesino)
+  const porValidar = visibles.filter((o) => o.estado === 'ENTREGADO').length
 
   return (
     <div className="lista">
@@ -510,11 +512,12 @@ function ObjetivosMaster({ jugador, pistas, hacer }) {
         Objetivos
         {porValidar > 0 && <span className="etiqueta entregado">{porValidar} por validar</span>}
       </h3>
-      {jugador.objetivos.map((o) => (
+      {visibles.map((o) => (
         <div key={o.id} className={`elemento ${o.estado === 'ENTREGADO' ? 'por-validar' : ''}`}>
           <p>
             {o.texto}
             {o.principal && <span className="etiqueta principal">Principal</span>}
+            {o.deAsesino && <span className="etiqueta asesino">Misión de asesino</span>}
           </p>
           <p className="tenue">
             {TIPOS_OBJETIVO[o.tipo]}

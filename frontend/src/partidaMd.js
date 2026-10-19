@@ -17,6 +17,8 @@
 //   # Pistas
 //   ## Título                       - Precio / QR / Dónde: valor, y el contenido como texto
 //   # Visiones de reserva           1. Título  (debajo: imagen, nota)
+//   # Objetivos del asesino         1. texto   (como los de un personaje: se cargan en todos, y cada
+//                                   jugador solo los ve si el Máster le marca como asesino)
 //
 // Las líneas que empiezan por ">" y los comentarios <!-- --> se ignoran.
 
@@ -57,7 +59,7 @@ const TIPOS_OBJETIVO = ['LOGRO', 'TEXTO', 'PERSONA']
 export function leerPartidaMd(texto) {
   const avisos = []
   const arbol = arbolDe(texto)
-  const resultado = { partida: { lugares: null, precioPistaFalsa: null }, personajes: [], pistas: [], visionesReserva: [], avisos }
+  const resultado = { partida: { lugares: null, precioPistaFalsa: null }, personajes: [], pistas: [], visionesReserva: [], objetivosAsesino: [], avisos }
 
   for (const h1 of arbol) {
     const seccion = normalizar(h1.titulo)
@@ -75,12 +77,27 @@ export function leerPartidaMd(texto) {
         imagenUrl: v.campos.imagen?.valor || null,
         nota: v.campos.nota?.valor || null,
       }))
+    } else if (seccion === 'objetivos del asesino') {
+      resultado.objetivosAsesino = numeradosDe(h1.cuerpo).map((o) => objetivoDe(o, avisos))
     } else if (h1.titulo && h1 !== arbol[0] && !seccion.startsWith('como ')) {
       // El primer # es el título del documento y "# Cómo se rellena…" son instrucciones: no avisan.
       avisos.push(`Línea ${h1.linea}: sección «${h1.titulo}» desconocida (se ignora)`)
     }
   }
   return resultado
+}
+
+function objetivoDe(o, avisos) {
+  const tipo = (o.campos.tipo?.valor || 'LOGRO').toUpperCase()
+  if (!TIPOS_OBJETIVO.includes(tipo)) avisos.push(`Línea ${o.linea}: tipo de objetivo «${tipo}» desconocido`)
+  return {
+    texto: o.titulo,
+    principal: si(o.campos.principal?.valor),
+    tipo,
+    cantidad: o.campos.cantidad ? numero(o.campos.cantidad, avisos) : 1,
+    pista: o.campos.pista?.valor || null,
+    dinero: o.campos.dinero ? numero(o.campos.dinero, avisos) : 0,
+  }
 }
 
 function personajeDe(h2, avisos) {
@@ -101,18 +118,7 @@ function personajeDe(h2, avisos) {
     } else if (titulo === 'secretos') {
       p.secretos = elementosDe(h3.cuerpo)
     } else if (titulo === 'objetivos') {
-      p.objetivos = numeradosDe(h3.cuerpo).map((o) => {
-        const tipo = (o.campos.tipo?.valor || 'LOGRO').toUpperCase()
-        if (!TIPOS_OBJETIVO.includes(tipo)) avisos.push(`Línea ${o.linea}: tipo de objetivo «${tipo}» desconocido`)
-        return {
-          texto: o.titulo,
-          principal: si(o.campos.principal?.valor),
-          tipo,
-          cantidad: o.campos.cantidad ? numero(o.campos.cantidad, avisos) : 1,
-          pista: o.campos.pista?.valor || null,
-          dinero: o.campos.dinero ? numero(o.campos.dinero, avisos) : 0,
-        }
-      })
+      p.objetivos = numeradosDe(h3.cuerpo).map((o) => objetivoDe(o, avisos))
     } else if (titulo.startsWith('habilidad')) {
       const c = camposDe(h3.cuerpo)
       const nombre = h3.titulo.includes(':') ? h3.titulo.slice(h3.titulo.indexOf(':') + 1).trim() : c.nombre?.valor

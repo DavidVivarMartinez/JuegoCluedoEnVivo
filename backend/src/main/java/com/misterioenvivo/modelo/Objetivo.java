@@ -27,6 +27,10 @@ public class Objetivo {
     @Column(nullable = false, columnDefinition = "boolean not null default false")
     private boolean principal = false;
 
+    /** Misión de asesino: solo la ve el jugador si el Máster le marca como asesino (y entonces sustituye a su principal). */
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean deAsesino = false;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, columnDefinition = "varchar(20) not null default 'LOGRO'")
     private TipoObjetivo tipo = TipoObjetivo.LOGRO;
@@ -57,6 +61,16 @@ public class Objetivo {
     public void setEstado(EstadoObjetivo estado) { this.estado = estado; }
     public boolean isPrincipal() { return principal; }
     public void setPrincipal(boolean principal) { this.principal = principal; }
+    public boolean isDeAsesino() { return deAsesino; }
+    public void setDeAsesino(boolean deAsesino) { this.deAsesino = deAsesino; }
+
+    /**
+     * Si cuenta para su jugador: las misiones de asesino solo para el asesino, y si tiene un principal
+     * de asesino, ese sustituye al principal de siempre.
+     */
+    public static boolean aplica(boolean deAsesino, boolean principal, boolean asesino, boolean conMision) {
+        return deAsesino ? asesino : !(asesino && conMision && principal);
+    }
     public TipoObjetivo getTipo() { return tipo; }
     public void setTipo(TipoObjetivo tipo) { this.tipo = tipo; }
     public int getCantidad() { return cantidad; }
