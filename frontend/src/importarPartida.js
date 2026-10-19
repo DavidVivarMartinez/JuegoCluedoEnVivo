@@ -86,20 +86,26 @@ export async function importarPartida(datos, api, log = () => {}, opciones = {})
   log(`Secretos nuevos: ${cuenta.secretos}`)
 
   // ---------- Pistas (por título); los sobres de cada personaje también son pistas ----------
+  const notaSobre = (nombre) => `Sobre programado para ${nombre}`
   const todas = [
     ...datos.pistas,
-    ...datos.personajes.flatMap((p) => p.sobres.map((s) => ({ titulo: s.titulo, contenido: s.contenido, precio: null, qr: false, nota: `Sobre programado para ${p.nombre}` }))),
+    ...datos.personajes.flatMap((p) => p.sobres.map((s) => ({ titulo: s.titulo, contenido: s.contenido, precio: null, qr: false, nota: notaSobre(p.nombre) }))),
   ]
-  const pistaPrevia = new Map(estado.pistas.map((p) => [normalizar(p.titulo), p]))
+  // Un título que se repite en el fichero (el sobre «Tu noche» de cada uno) se distingue por la nota.
+  const vecesTitulo = new Map()
+  for (const p of todas) vecesTitulo.set(normalizar(p.titulo), (vecesTitulo.get(normalizar(p.titulo)) ?? 0) + 1)
+  const clave = (titulo, nota) => (vecesTitulo.get(normalizar(titulo)) > 1 ? `${normalizar(titulo)}|${normalizar(nota ?? '')}` : normalizar(titulo))
+  const pistaPrevia = new Map(estado.pistas.map((p) => [clave(p.titulo, p.nota), p]))
   for (const pista of todas) {
     if (!pista.contenido) {
       log(`Aviso: la pista «${pista.titulo}» no tiene contenido y se salta`)
       continue
     }
-    let previa = pistaPrevia.get(normalizar(pista.titulo))
+    let previa = pistaPrevia.get(clave(pista.titulo, pista.nota))
     if (!previa) {
       const { id } = await api('POST', '/pistas', { titulo: pista.titulo, contenido: pista.contenido, nota: pista.nota })
-      previa = { id, precio: null, codigoQr: null }
+      previa = { id, titulo: pista.titulo, contenido: pista.contenido, nota: pista.nota, precio: null, codigoQr: null }
+      pistaPrevia.set(clave(pista.titulo, pista.nota), previa)
       cuenta.pistas++
     } else if (previa.contenido !== pista.contenido || (previa.nota ?? null) !== (pista.nota ?? null)) {
       await api('PUT', `/pistas/${previa.id}`, { titulo: previa.titulo, contenido: pista.contenido, nota: pista.nota ?? '' })
@@ -177,8 +183,9 @@ export async function importarPartida(datos, api, log = () => {}, opciones = {})
 
   // ---------- Envíos: sobres, visiones y visiones de reserva ----------
   // La primera línea de la nota de una visión es su nombre (el momento o el título): así se empareja.
-  const pistaPorTitulo = new Map(estado.pistas.map((p) => [normalizar(p.titulo), p.id]))
+  const pistaPorClave = new Map(estado.pistas.map((p) => [clave(p.titulo, p.nota), p.id]))
   const envios = estado.envios ?? []
+  const usados = new Set()
   const primera = (nota) => normalizar((nota ?? '').split('\n')[0])
 
   async function guardarEnvio(previo, cuerpo) {
@@ -195,10 +202,16 @@ export async function importarPartida(datos, api, log = () => {}, opciones = {})
     const j = jugadoresAhora.get(normalizar(p.nombre))
     if (!j) continue
     for (const s of p.sobres) {
-      const id = pistaPorTitulo.get(normalizar(s.titulo))
+      const id = pistaPorClave.get(clave(s.titulo, notaSobre(p.nombre)))
       if (!id) continue
-      const previo = envios.find((e) => e.tipo === 'PISTA' && e.pistaId === id && e.programadaPara)
-      await guardarEnvio(previo, { tipo: 'PISTA', pistaId: id, jugadorIds: [j.id], programadaPara: s.hora, anunciar: s.anunciar })
+      // Su envío es el de esa pista; si no, el de un sobre con ese título solo para este personaje
+      // (así se arreglan los «Tu noche» que una versión anterior enlazó todos a la misma pista).
+      const libre = (e) => e.tipo === 'PISTA' && e.programadaPara && !usados.has(e.id)
+      const previo = envios.find((e) => libre(e) && e.pistaId === id)
+        ?? envios.find((e) => libre(e) && normalizar(e.pistaTitulo ?? '') === normalizar(s.titulo)
+          && e.jugadorIds.length === 1 && e.jugadorIds[0] === j.id)
+      if (previo) usados.add(previo.id)
+      await guardarEnvio(previo,{ tipo: 'PISTA', pistaId: id, jugadorIds: [j.id], programadaPara: s.hora, anunciar: s.anunciar })
     }
     for (const v of p.visiones) {
       const previo = envios.find((e) => e.tipo === 'VISION' && e.programadaPara && e.jugadorIds.length === 1

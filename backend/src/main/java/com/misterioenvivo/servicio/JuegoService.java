@@ -696,10 +696,6 @@ public class JuegoService {
 
     private static final String TITULO_ARMA = "El arma";
 
-    private static String minuscula(String texto) {
-        return texto.isEmpty() ? texto : Character.toLowerCase(texto.charAt(0)) + texto.substring(1);
-    }
-
     // ---------- Jugadores ----------
 
     public Long crearJugador(Long partidaId, FichaEntrada ficha) {
