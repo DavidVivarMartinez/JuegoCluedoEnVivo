@@ -16,7 +16,7 @@ public interface ImagenRepository extends JpaRepository<Imagen, Long> {
     boolean existsByClave(String clave);
 
     /** Listado sin los bytes. */
-    @Query("select new com.misterioenvivo.repo.ImagenResumen(i.nombre, i.clave, i.tamano) "
+    @Query("select new com.misterioenvivo.repo.ImagenResumen(i.nombre, i.clave, i.tamano, i.tipo) "
             + "from Imagen i where i.partida.id = :partida order by i.nombre")
     List<ImagenResumen> resumenes(@Param("partida") Long partidaId);
 }

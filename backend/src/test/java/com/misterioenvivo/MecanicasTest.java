@@ -225,6 +225,38 @@ class MecanicasTest {
     }
 
     @Test
+    void elMasterGuardaSusDocumentos() throws Exception {
+        String master = crearPartida();
+        byte[] html = "<!doctype html><meta charset=\"utf-8\"><title>Dossier</title><p>Guion del Máster</p>"
+                .getBytes(StandardCharsets.UTF_8);
+        byte[] pdf = "%PDF-1.4 prueba".getBytes(StandardCharsets.US_ASCII);
+        mvc.perform(multipart("/api/master/imagenes").file(new org.springframework.mock.web.MockMultipartFile("archivo", "dossier.html", "text/html", html))
+                .header("Authorization", "Bearer " + master)).andExpect(status().isCreated());
+        mvc.perform(multipart("/api/master/imagenes").file(new org.springframework.mock.web.MockMultipartFile("archivo", "imprimir.pdf", "application/pdf", pdf))
+                .header("Authorization", "Bearer " + master)).andExpect(status().isCreated());
+
+        // El listado dice qué es cada cosa
+        JsonNode lista = leer(get("/api/master/imagenes"), master);
+        assertThat(lista).hasSize(2);
+        String urlHtml = null;
+        for (JsonNode d : lista) {
+            if (d.get("nombre").asText().equals("dossier.html")) {
+                assertThat(d.get("tipo").asText()).isEqualTo("text/html");
+                urlHtml = d.get("url").asText();
+            } else {
+                assertThat(d.get("tipo").asText()).isEqualTo("application/pdf");
+            }
+        }
+
+        // El HTML se sirve en UTF-8, aislado de la app y sin caché que lo deje viejo
+        var respuesta = mvc.perform(get(urlHtml)).andExpect(status().isOk()).andReturn().getResponse();
+        assertThat(respuesta.getContentType()).startsWith("text/html").containsIgnoringCase("utf-8");
+        assertThat(respuesta.getHeader("Content-Security-Policy")).startsWith("sandbox");
+        assertThat(respuesta.getHeader("Cache-Control")).contains("no-cache");
+        assertThat(respuesta.getContentAsString(StandardCharsets.UTF_8)).contains("Guion del Máster");
+    }
+
+    @Test
     void imagenesSubidasSeUsanEnVisiones() throws Exception {
         String master = crearPartida();
         long ana = crearJugador(master, "Ana", null);

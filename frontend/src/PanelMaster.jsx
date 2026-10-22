@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { api, FASES, hora } from './api.js'
+import { useEffect, useState } from 'react'
+import { api, FASES, hora, subirArchivo } from './api.js'
 import { useSondeo } from './useSondeo.js'
 import Pestanas from './Pestanas.jsx'
 import Avatar from './Avatar.jsx'
@@ -115,6 +115,8 @@ function Partida({ datos, hacer, alSalir, recargar }) {
     <section>
       <Pendientes datos={datos} hacer={hacer} />
 
+      <Documentos />
+
       <h2>Fase</h2>
       <div className="botonera">
         {Object.entries(FASES).map(([fase, titulo]) => (
@@ -168,6 +170,67 @@ function Partida({ datos, hacer, alSalir, recargar }) {
 }
 
 /** Bandeja del Máster: lo que los jugadores esperan que contestes. */
+/** Documentos del Máster (su dossier, lo que hay que imprimir): solo él ve los enlaces. */
+function Documentos() {
+  const [lista, setLista] = useState(null)
+  const [error, setError] = useState(null)
+  const [subiendo, setSubiendo] = useState(false)
+
+  async function cargar() {
+    try {
+      const todo = await api('GET', '/master/imagenes')
+      setLista(todo.filter((d) => d.tipo === 'text/html' || d.tipo === 'application/pdf'))
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  useEffect(() => {
+    cargar()
+  }, [])
+
+  async function subir(evento) {
+    const archivo = evento.target.files?.[0]
+    evento.target.value = ''
+    if (!archivo) return
+    setError(null)
+    setSubiendo(true)
+    try {
+      await subirArchivo('/master/imagenes', archivo, archivo.name)
+      await cargar()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  return (
+    <>
+      <h2>Tus documentos</h2>
+      {error && <p className="error">{error}</p>}
+      {lista === null ? (
+        !error && <p className="tenue">Cargando…</p>
+      ) : lista.length === 0 ? (
+        <p className="tenue">Aquí aparecen tu dossier y lo que hay que imprimir cuando los subas.</p>
+      ) : (
+        lista.map((d) => (
+          <a key={d.url} className="tarjeta documento" href={d.url} target="_blank" rel="noopener noreferrer">
+            <strong>{d.nombre.replace(/\.(html?|pdf)$/i, '')}</strong>
+            <span className="tenue">
+              {d.tipo === 'application/pdf' ? 'PDF' : 'Página'} · {Math.max(1, Math.round(d.tamano / 1024))} KB · Abrir
+            </span>
+          </a>
+        ))
+      )}
+      <label className="subir-documento">
+        {subiendo ? 'Subiendo…' : 'Subir un documento (PDF o HTML)'}
+        <input type="file" accept=".pdf,.html,.htm,application/pdf,text/html" onChange={subir} disabled={subiendo} hidden />
+      </label>
+    </>
+  )
+}
+
 function Pendientes({ datos, hacer }) {
   const habilidades = datos.jugadores.flatMap((j) => (j.habilidades ?? []).filter((h) => h.estado === 'SOLICITADA').map((h) => ({ ...h, jugador: j.nombre })))
   const falsas = datos.pistas.filter((p) => p.falsa && p.estadoFalsa === 'PENDIENTE')

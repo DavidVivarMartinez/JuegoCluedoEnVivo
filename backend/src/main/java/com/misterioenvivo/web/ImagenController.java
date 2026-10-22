@@ -24,12 +24,14 @@ import java.util.Set;
 /**
  * Imágenes de la partida. El Máster las sube (/api/master/imagenes) y cualquiera las ve por
  * su enlace (/api/imagenes/CLAVE), que es lo que se guarda en visiones y fichas.
+ * También guarda los documentos del Máster (PDF y HTML, como su dossier): solo él ve sus enlaces.
  */
 @RestController
 public class ImagenController {
 
     public static final String PREFIJO = "/api/imagenes/";
     private static final Set<String> TIPOS = Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
+    private static final Set<String> DOCUMENTOS = Set.of("application/pdf", "text/html");
     private static final int MAXIMO = 5 * 1024 * 1024;
 
     private final ImagenRepository imagenes;
@@ -42,7 +44,7 @@ public class ImagenController {
         this.codigos = codigos;
     }
 
-    public record ImagenSubida(String nombre, String url, int tamano) { }
+    public record ImagenSubida(String nombre, String url, int tamano, String tipo) { }
 
     /** Sube (o reemplaza, si ya hay una con ese nombre) una imagen. El enlace no cambia al reemplazarla. */
     @PostMapping("/api/master/imagenes")
@@ -51,11 +53,15 @@ public class ImagenController {
     public ImagenSubida subir(@RequestAttribute(Sesion.ATRIBUTO) Sesion s, @RequestParam("archivo") MultipartFile archivo)
             throws IOException {
         String tipo = archivo.getContentType() == null ? "" : archivo.getContentType().toLowerCase();
-        if (!TIPOS.contains(tipo)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se admiten imágenes JPG, PNG, WEBP o GIF");
+        if (tipo.contains(";")) {
+            tipo = tipo.substring(0, tipo.indexOf(";")).strip();
+        }
+        if (!TIPOS.contains(tipo) && !DOCUMENTOS.contains(tipo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Solo se admiten imágenes JPG, PNG, WEBP o GIF, o documentos PDF o HTML");
         }
         if (archivo.isEmpty() || archivo.getSize() > MAXIMO) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La imagen debe pesar menos de 5 MB");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El archivo debe pesar menos de 5 MB");
         }
         String nombre = nombreLimpio(archivo.getOriginalFilename());
         Partida partida = partidas.findById(s.partidaId())
@@ -77,14 +83,14 @@ public class ImagenController {
         imagen.setTamano(datos.length);
         imagen.setCreadaEn(Instant.now());
         imagenes.save(imagen);
-        return new ImagenSubida(nombre, PREFIJO + imagen.getClave(), datos.length);
+        return new ImagenSubida(nombre, PREFIJO + imagen.getClave(), datos.length, tipo);
     }
 
     @GetMapping("/api/master/imagenes")
     @Transactional(readOnly = true)
     public List<ImagenSubida> listar(@RequestAttribute(Sesion.ATRIBUTO) Sesion s) {
         return imagenes.resumenes(s.partidaId()).stream()
-                .map(r -> new ImagenSubida(r.nombre(), PREFIJO + r.clave(), r.tamano())).toList();
+                .map(r -> new ImagenSubida(r.nombre(), PREFIJO + r.clave(), r.tamano(), r.tipo())).toList();
     }
 
     /** Pública: la clave es el permiso. */
@@ -93,10 +99,22 @@ public class ImagenController {
     public ResponseEntity<byte[]> ver(@PathVariable("clave") String clave) {
         Imagen imagen = imagenes.findByClave(clave)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Imagen no encontrada"));
+        String etiqueta = imagen.getClave() + "-" + imagen.getTamano() + "-" + imagen.getCreadaEn().toEpochMilli();
+        if ("text/html".equals(imagen.getTipo())) {
+            // Un documento HTML se abre aislado (sin acceso a los datos de la app) y siempre en su última versión.
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("text/html;charset=UTF-8"))
+                    .header("Content-Security-Policy", "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .cacheControl(CacheControl.noCache().cachePrivate())
+                    .eTag(etiqueta)
+                    .body(imagen.getDatos());
+        }
+        boolean documento = DOCUMENTOS.contains(imagen.getTipo());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(imagen.getTipo()))
-                .cacheControl(CacheControl.maxAge(Duration.ofDays(7)).cachePrivate())
-                .eTag(imagen.getClave() + "-" + imagen.getTamano() + "-" + imagen.getCreadaEn().toEpochMilli())
+                .cacheControl(documento ? CacheControl.noCache().cachePrivate() : CacheControl.maxAge(Duration.ofDays(7)).cachePrivate())
+                .eTag(etiqueta)
                 .body(imagen.getDatos());
     }
 
